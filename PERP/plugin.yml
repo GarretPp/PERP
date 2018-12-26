@@ -1,0 +1,22 @@
+name:  PERP
+author:  Garret_Pp
+version:  0.3
+description:  Custom PERP server plugin
+main:  me.garret.PERP.Main
+commands:
+  roll:
+    description:  Rolls random number between 1 and 100.
+  describe:
+    description:  Describe the actions of a player.
+    aliases:  [desc]
+  advert:
+    description:  Advertise a product or service.
+  act:
+    description:  Preform acts in chat.
+  911:
+    description:  Call police on duty.
+  pdLobby:
+    description:  Opens Police Dept Lobby GUI.
+  radio:
+    description:  Talk to other government employees on duty.
+    aliases:  [gov]
