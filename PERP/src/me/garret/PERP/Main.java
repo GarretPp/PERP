@@ -10,10 +10,12 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -67,7 +69,7 @@ public class Main extends JavaPlugin implements Listener {
 				}
 				
 			} else if (command.equals("act")) { //acts that will be described in chat since minecraft can't manipulate player stance...
-				if (args.length > 1) {
+				if (args.length > 1 || args.length == 0) {
 					player.sendMessage(ChatColor.GOLD + "[PERP] " + ChatColor.RED + "No such act.");
 				} else {
 					switch(args[0]) {
@@ -75,16 +77,16 @@ public class Main extends JavaPlugin implements Listener {
 							Bukkit.broadcastMessage(ChatColor.DARK_RED + player.getName() + " has surrendered.");
 						
 							Material[] weapons = {Material.WOODEN_SWORD, Material.IRON_SWORD, Material.GOLDEN_SWORD, Material.DIAMOND_SWORD, Material.BOW};
-
-					          for(Material m : weapons){
-					        	  
-					              if(player.getInventory().contains(m)){ //drops items 3 blocks in front of players
-					                  ItemStack weaponStack = new ItemStack(m, 1); // TODO copy item meta and reuse that to take specialty items
-					                  Location playerFront = player.getLocation().add(player.getLocation().getDirection().setY(0).normalize().multiply(3));
-					                  player.getInventory().remove(weaponStack);
-					                  player.getWorld().dropItemNaturally(playerFront, weaponStack);
-					              }
-					          }
+							if (!police.contains(player)) {
+								for(Material m : weapons){
+						              if(player.getInventory().contains(m)){ //drops items 3 blocks in front of players
+						                  ItemStack weaponStack = new ItemStack(m, 1); // TODO copy item meta and reuse that to take specialty items
+						                  Location playerFront = player.getLocation().add(player.getLocation().getDirection().setY(0).normalize().multiply(3));
+						                  player.getInventory().remove(weaponStack);
+						                  player.getWorld().dropItemNaturally(playerFront, weaponStack);
+						              }
+						          }
+							}
 							break;
 						case "zombie":
 							Bukkit.broadcastMessage(ChatColor.DARK_RED + player.getName() + " waves arms like a " + ChatColor.DARK_GREEN + "zombie.");
@@ -100,7 +102,10 @@ public class Main extends JavaPlugin implements Listener {
 							player.sendMessage(ChatColor.GOLD + "[PERP] " + ChatColor.RED + "No such act");
 					}
 				}
-			} else if (command.equalsIgnoreCase("911")) {
+			} else if (command.equalsIgnoreCase("acts")){
+				player.sendMessage(ChatColor.RED + "Surrender, zombie, wave, salute.");
+			}
+			else if (command.equalsIgnoreCase("911")) {
 				if (args.length == 0) {
 					player.sendMessage(ChatColor.GOLD + "[PERP] " + ChatColor.RED + "You must include text in your 911 call.");
 				} else {
@@ -150,7 +155,7 @@ public class Main extends JavaPlugin implements Listener {
 		makeComplaintMeta.setDisplayName(ChatColor.RED + "Make a Complaint");
 		makeComplaint.setItemMeta(makeComplaintMeta);
 		
-		ItemStack reportCrime = new ItemStack (Material.SIGN);
+		ItemStack reportCrime = new ItemStack (Material.OAK_SIGN);
 		ItemMeta reportCrimeMeta = reportCrime.getItemMeta();
 		reportCrimeMeta.setDisplayName(ChatColor.GOLD + "Report a Crime");
 		reportCrime.setItemMeta(reportCrimeMeta);
@@ -177,7 +182,7 @@ public class Main extends JavaPlugin implements Listener {
 	}
 	
 
-	public void policePDLobby(Player p) { //PD Lobby menu
+	public void policePDLobby(Player p) { //PD Lobby menu when on duty
 		Inventory inv = Bukkit.createInventory(null, 9, ChatColor.DARK_BLUE + "Police Lobby Menu");
 
 		ItemStack policeJob = new ItemStack (Material.BOW);
@@ -212,8 +217,8 @@ public class Main extends JavaPlugin implements Listener {
 	@EventHandler
 	public void onInventoryEvent(InventoryClickEvent e) {
 
-		Player p =(Player) e.getWhoClicked();
-		String chest = ChatColor.stripColor(e.getInventory().getName());
+		Player p = (Player) e.getWhoClicked();
+		String chest = ChatColor.stripColor(e.getView().getTitle().toString());
 		Material itemClicked = e.getCurrentItem().getType();
 
 
@@ -228,6 +233,7 @@ public class Main extends JavaPlugin implements Listener {
 				e.setCancelled(true);
 				police.add(p);
 				govRadio(p.getName() + " is now 10-8.", p);
+				giveGovWeapon(p);
 				p.closeInventory();
 				break;
 			case BOOK:
@@ -235,7 +241,7 @@ public class Main extends JavaPlugin implements Listener {
 				p.sendMessage(ChatColor.GOLD + "[PERP]" + ChatColor.RED + " To make a complaint go to https://plpd.online/internalaffairs/complaint/create");
 				p.closeInventory();
 				break;
-			case SIGN:
+			case OAK_SIGN:
 				e.setCancelled(true);
 				p.sendMessage(ChatColor.GOLD + "[PERP]" + ChatColor.RED + " Send a 911 message with /911 <text>");
 				p.closeInventory();
@@ -255,6 +261,7 @@ public class Main extends JavaPlugin implements Listener {
 				case BOW:
 					e.setCancelled(true);
 					govRadio(p.getName() + " is now 10-7.", p);
+					takeGovWeapon(p);
 					police.remove(p);
 					p.closeInventory();
 					break;
@@ -270,18 +277,83 @@ public class Main extends JavaPlugin implements Listener {
 
 	}
 	
+	@EventHandler
+	public void onItemDrop(PlayerDropItemEvent e) {
+		Player p = e.getPlayer();
+		
+		ItemStack policeWep = new ItemStack (Material.BOW);
+		ItemMeta policeWepMeta = policeWep.getItemMeta();
+		policeWepMeta.setDisplayName(ChatColor.BLUE + "Service weapon");
+		policeWepMeta.addEnchant(Enchantment.DAMAGE_ALL, 3, false);
+		policeWepMeta.addEnchant(Enchantment.ARROW_INFINITE, 1, false);
+		policeWepMeta.setUnbreakable(true);
+		policeWep.setItemMeta(policeWepMeta);
+		
+		ItemStack policeMag = new ItemStack (Material.ARROW);
+		ItemMeta policeMagMeta = policeMag.getItemMeta();
+		policeMagMeta.setDisplayName(ChatColor.BOLD + "Pistol Mag");
+		policeMag.setItemMeta(policeMagMeta);
+		
+		if (e.getItemDrop().getItemStack().isSimilar(policeWep) || e.getItemDrop().getItemStack().isSimilar(policeMag)) {
+			p.sendMessage(ChatColor.GOLD + "[PERP] " + ChatColor.RED + "You cannot drop that.");
+			e.setCancelled(true);
+		}
+		
+		return;
+	}
+	
 	private void govRadio(String s, Player p) { //government radio method to make easier and more uniform
 		for (Player cops : police) {
 			cops.sendMessage(ChatColor.BLUE + "[Officer " + p.getName() + "] " + s);
 		}
 		
 	}
-
+	
+	@EventHandler
 	public void onQuit(final PlayerQuitEvent event) {
 		Player p = event.getPlayer(); //remove from Police on disconnect
 		if (police.contains(p)) {
+			takeGovWeapon(p);
 			police.remove(p);
 		}
+	}
+	
+	public void giveGovWeapon(Player p) {
+		ItemStack policeWep = new ItemStack (Material.BOW);
+		ItemMeta policeWepMeta = policeWep.getItemMeta();
+		policeWepMeta.setDisplayName(ChatColor.BLUE + "Service weapon");
+		policeWepMeta.addEnchant(Enchantment.DAMAGE_ALL, 3, false);
+		policeWepMeta.addEnchant(Enchantment.ARROW_INFINITE, 1, false);
+		policeWepMeta.setUnbreakable(true);
+		policeWep.setItemMeta(policeWepMeta);
+
+		ItemStack policeMag = new ItemStack (Material.ARROW);
+		ItemMeta policeMagMeta = policeMag.getItemMeta();
+		policeMagMeta.setDisplayName(ChatColor.BOLD + "Pistol Mag");
+		policeMag.setItemMeta(policeMagMeta);
+		
+		p.getInventory().addItem(policeWep);
+		p.getInventory().addItem(policeMag);
+	}	
+	
+	public void takeGovWeapon(Player p) {
+		ItemStack policeWep = new ItemStack (Material.BOW);
+		ItemMeta policeWepMeta = policeWep.getItemMeta();
+		policeWepMeta.setDisplayName(ChatColor.BLUE + "Service weapon");
+		policeWepMeta.addEnchant(Enchantment.DAMAGE_ALL, 3, false);
+		policeWepMeta.addEnchant(Enchantment.ARROW_INFINITE, 1, false);
+		policeWepMeta.setUnbreakable(true);
+		policeWep.setItemMeta(policeWepMeta);
+		
+		ItemStack policeMag = new ItemStack (Material.ARROW);
+		ItemMeta policeMagMeta = policeMag.getItemMeta();
+		policeMagMeta.setDisplayName(ChatColor.BOLD + "Pistol Mag");
+		policeMag.setItemMeta(policeMagMeta);
+		
+		Inventory i = p.getInventory();
+		i.removeItem(policeWep);
+		i.removeItem(policeMag);
+		
 	}
 	
 }
