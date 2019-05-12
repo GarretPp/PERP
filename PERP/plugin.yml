@@ -1,6 +1,6 @@
 name:  PERP
 author:  Garret_Pp
-version:  0.6
+version:  0.6.1
 api-version: 1.14
 description:  Custom PERP server plugin
 main:  me.garret.PERP.Main
