@@ -14,6 +14,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -77,15 +78,33 @@ public class Main extends JavaPlugin implements Listener {
 							Bukkit.broadcastMessage(ChatColor.DARK_RED + player.getName() + " has surrendered.");
 						
 							Material[] weapons = {Material.WOODEN_SWORD, Material.IRON_SWORD, Material.GOLDEN_SWORD, Material.DIAMOND_SWORD, Material.BOW};
+
 							if (!police.contains(player)) {
-								for(Material m : weapons){
-						              if(player.getInventory().contains(m)){ //drops items 3 blocks in front of players
-						                  ItemStack weaponStack = new ItemStack(m, 1); // TODO copy item meta and reuse that to take specialty items
-						                  Location playerFront = player.getLocation().add(player.getLocation().getDirection().setY(0).normalize().multiply(3));
-						                  player.getInventory().remove(weaponStack);
-						                  player.getWorld().dropItemNaturally(playerFront, weaponStack);
-						              }
-						          }
+								Inventory inv = player.getInventory();
+								
+								for(ItemStack item : inv.getContents()) 
+								{
+									for(Material m : weapons) {
+										
+										ItemStack mCheckStack = new ItemStack(m,1);
+
+										//if(mCheckStack.isSimilar(item)) 
+										try {
+											if(mCheckStack.getType() == item.getType()) 
+											{
+							                  ItemStack weaponStack = item; 
+							                  Location playerFront = player.getLocation().add(player.getLocation().getDirection().setY(0).normalize().multiply(3));
+
+							                  player.getInventory().remove(weaponStack);
+							                  player.getWorld().dropItemNaturally(playerFront, weaponStack);
+											}
+										} catch (Exception e) {
+											
+										}
+										
+									}
+
+								}
 							}
 							break;
 						case "zombie":
@@ -134,6 +153,10 @@ public class Main extends JavaPlugin implements Listener {
 					}
 				} else {
 					player.sendMessage(ChatColor.GOLD + "[PERP] " + ChatColor.RED + "You cannot use the government radio.");
+				}
+			} else if (command.equalsIgnoreCase("panic") && police.contains(player)) {
+				for (Player cops : police) {
+					cops.sendMessage(ChatColor.RED + "Officer " + player.getName().toUpperCase() + " has pressed their panic button.");
 				}
 			}
 			
@@ -275,6 +298,23 @@ public class Main extends JavaPlugin implements Listener {
 			}
 		}
 
+	}
+	
+	@EventHandler
+	public void onPlayerDeathEvent(PlayerDeathEvent e) 
+	{
+		Player p = (Player) e.getEntity();
+		if (p instanceof Player) 
+		{
+			for (Player cops : police) 
+			{
+				cops.sendMessage(ChatColor.RED + "--------------");
+				cops.sendMessage(ChatColor.RED + p.getName());
+				cops.sendMessage(ChatColor.RED + "A life alert has occured.");
+				cops.sendMessage(ChatColor.RED + "--------------");
+			}
+			e.setKeepInventory(true);
+		}
 	}
 	
 	@EventHandler

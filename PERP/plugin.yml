@@ -1,6 +1,7 @@
 name:  PERP
 author:  Garret_Pp
-version:  0.5
+version:  0.6
+api-version: 1.14
 description:  Custom PERP server plugin
 main:  me.garret.PERP.Main
 commands:
@@ -22,3 +23,5 @@ commands:
   radio:
     description:  Talk to other government employees on duty.
     aliases:  [gov]
+  panic:
+    description:  Panic when in trouble to other officers.
